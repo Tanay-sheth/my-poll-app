@@ -1,0 +1,27 @@
+/* This is the new Tailwind v4 way!
+We just need one import.
+*/
+@import "tailwindcss";
+
+/* In v4, we can define our theme variables directly in the CSS
+using the @theme directive. This is cleaner than the old
+tailwind.config.js for simple settings.
+/
+@theme {
+:root {
+--foreground-rgb: 255, 255, 255; / White text /
+--background-start-rgb: 0, 0, 0;  / Black background start /
+--background-end-rgb: 0, 0, 0;    / Black background end */
+
+
+/* These base body styles are standard CSS and work perfectly.
+*/
+body {
+color: rgb(var(--foreground-rgb));
+background: linear-gradient(
+to bottom,
+transparent,
+rgb(var(--background-end-rgb))
+)
+rgb(var(--background-start-rgb));
+}
