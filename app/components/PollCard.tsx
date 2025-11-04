@@ -1,10 +1,18 @@
 // This component will be a Server Component to start,
 // but it will render Client Components (the buttons).
 
-// --- Use relative paths from 'app/components' directory ---
-import type { PollWithData } from "../../lib/data-access";
-import { submitVote } from "../actions";
-import { VoteButton } from "./VoteButton";
+// --- FIX: Swapping to aliases for Vercel build ---
+// We'll use the root-based '@/' alias for all imports
+// to ensure Vercel's build process can find them.
+import type { PollWithData } from "@/lib/data-access";
+import { submitVote } from "@/app/actions";
+import { VoteButton } from "@/app/components/VoteButton";
+// ---
+
+// --- FIX for Vercel Build Error ---
+// We create a type for a single 'option' from our poll data
+// This is one element from the 'poll.options' array.
+type PollOption = PollWithData["options"][number];
 // ---
 
 /**
@@ -19,7 +27,8 @@ export function PollCard({ poll }: { poll: PollWithData }) {
 
   // Calculate the total number of votes for this poll
   // --- THIS IS THE FIX for the Vercel build error ---
-  const totalVotes = poll.options.reduce((sum: number, option) => {
+  // We explicitly type 'sum' as a number and 'option' with our new type
+  const totalVotes = poll.options.reduce((sum: number, option: PollOption) => {
     return sum + option._count.votes;
   }, 0);
 
