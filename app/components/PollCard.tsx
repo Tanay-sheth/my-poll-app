@@ -1,79 +1,83 @@
-// This is a Server Component. It fetches no data, just renders.
-// Use relative paths for imports
-import type { PollWithData } from '../../lib/data-access';
-import { submitVote } from '../actions';
-import { VoteButton } from './VoteButton';
+// This component will be a Server Component to start,
+// but it will render Client Components (the buttons).
 
-interface PollCardProps {
-  poll: PollWithData;
-}
+// --- Use relative paths from 'app/components' directory ---
+import type { PollWithData } from "../../lib/data-access";
+import { submitVote } from "../actions";
+import { VoteButton } from "./VoteButton";
+// ---
 
 /**
- * A Server Component that displays a single poll, its options,
- * and the vote counts.
+ * A component that renders a single poll, including its
+ * question, options, and voting buttons.
  */
-export function PollCard({ poll }: PollCardProps) {
-  // We get the user's vote from the poll data (it's either an array with one vote, or an empty array)
+export function PollCard({ poll }: { poll: PollWithData }) {
+  // Find out what this user voted for in this poll (if anything)
+  // Our 'getPolls' query cleverly only returns one vote if it matches
+  // the logged-in user, so we can just grab the first one.
   const userVote = poll.votes[0];
 
   // Calculate the total number of votes for this poll
+  // --- THIS IS THE FIX for the Vercel build error ---
   const totalVotes = poll.options.reduce((sum: number, option) => {
     return sum + option._count.votes;
   }, 0);
 
   return (
-    <div className="rounded-lg bg-gray-800/50 p-6 shadow-xl ring-1 ring-white/10">
-      <h3 className="text-lg font-semibold text-white">
-        {poll.question}
-      </h3>
-      <p className="mt-1 text-sm text-gray-400">
-        Posted by {poll.author?.name || 'Anonymous'}
-      </p>
+    <article className="rounded-lg bg-gray-800/50 p-6 shadow-xl ring-1 ring-white/10">
+      <header className="mb-4">
+        <h3 className="text-lg font-semibold text-white">{poll.question}</h3>
+        <p className="text-sm text-gray-400">
+          Posted by {poll.author?.name || "Anonymous"}
+        </p>
+      </header>
 
-      {/* This form wraps our list of options. When any button
-          inside is clicked, it will submit the form. */}
-      <form action={submitVote} className="mt-4 space-y-3">
-        {/* We need to pass the pollId to our action,
-            so we use a hidden input field. */}
+      {/*
+        This is the magic!
+        This <form> calls the 'submitVote' Server Action.
+        The action runs on the server, not the client.
+        The 'revalidatePath' in the action will cause this
+        component to re-render with new data.
+      */}
+      <form action={submitVote} className="space-y-3">
+        {/* We must include the pollId as hidden data so the action knows what poll is being voted on */}
         <input type="hidden" name="pollId" value={poll.id} />
 
-        <div className="space-y-2">
-          {poll.options.map((option) => {
-            // For each option, calculate its percentage of the total votes
-            const votePercentage =
-              totalVotes === 0
-                ? 0
-                : (option._count.votes / totalVotes) * 100;
+        {poll.options.map((option) => {
+          // Calculate the percentage of votes for this option
+          const voteCount = option._count.votes;
+          const percentage =
+            totalVotes === 0 ? 0 : (voteCount / totalVotes) * 100;
 
-            return (
-              <div key={option.id} className="relative">
-                {/* This div is the "progress bar" that shows the vote share */}
-                <div
-                  className="absolute left-0 top-0 h-full rounded-md bg-indigo-900/50 transition-all duration-500"
-                  style={{ width: `${votePercentage}%` }}
-                />
-                {/* This relative div sits on top of the progress bar */}
-                <div className="relative flex items-center justify-between">
-                  {/* The VoteButton is our interactive Client Component */}
-                  <VoteButton
-                    option={option}
-                    userVoteId={userVote?.optionId}
-                  />
-                  {/* Display the vote count and percentage */}
-                  <span className="z-10 pr-3 text-sm font-semibold text-gray-300">
-                    {option._count.votes}
-                  </span>
-                </div>
+          return (
+            // We wrap each button in a 'results' div to show the progress bar
+            <div key={option.id} className="relative">
+              {/* This is the progress bar */}
+              <div
+                className="absolute left-0 top-0 h-full rounded-md bg-indigo-500/30 transition-all"
+                style={{ width: `${percentage}%` }}
+              ></div>
+
+              {/*
+                This is the text for the vote counts.
+                We put it *outside* the button so you can't click it,
+                and use z-index to make sure it's on top of the progress bar.
+              */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-300">
+                {voteCount} vote{voteCount !== 1 ? "s" : ""}
               </div>
-            );
-          })}
-        </div>
-      </form>
 
-      <p className="mt-4 text-right text-xs text-gray-500">
-        {totalVotes} Total Votes
-      </p>
-    </div>
+              {/*
+                This is our Client Component button.
+                It's "form-aware" and will disable itself
+                when the form is submitting.
+              */}
+              <VoteButton option={option} userVoteId={userVote?.optionId} />
+            </div>
+          );
+        })}
+      </form>
+    </article>
   );
 }
 
