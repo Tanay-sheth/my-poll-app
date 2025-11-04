@@ -17,7 +17,7 @@ export function PollCard({ poll }: PollCardProps) {
   const userVote = poll.votes[0];
 
   // Calculate the total number of votes for this poll
-  const totalVotes = poll.options.reduce((sum, option) => {
+  const totalVotes = poll.options.reduce((sum: number, option) => {
     return sum + option._count.votes;
   }, 0);
 
