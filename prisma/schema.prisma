@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Defines the database provider (Postgres)
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL") // Loads from .env.local
+  relationMode = "prisma"
+}
+
+// Defines the Prisma client generator (for TypeScript)
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User Model
+// This model is linked to the NextAuth.js Account
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  polls         Poll[] // A user can create many polls
+  votes         Vote[] // A user can cast many votes
+}
+
+// Poll Model
+// Represents a poll created by a user
+model Poll {
+  id        String       @id @default(cuid())
+  question  String
+  createdAt DateTime     @default(now())
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  options   PollOption[] // A poll has many options
+  votes     Vote[] // A poll has many votes
+}
+
+// PollOption Model
+// Represents one of the choices for a poll
+model PollOption {
+  id      String   @id @default(cuid())
+  text    String
+  pollId  String
+  poll    Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes   Vote[] // An option can have many votes
+  @@index([pollId])
+}
+
+// Vote Model
+// Represents a user's vote on a poll
+model Vote {
+  id       String     @id @default(cuid())
+  userId   String
+  pollId   String
+  optionId String
+  createdAt DateTime   @default(now())
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  // This is the magic!
+  // Creates a unique constraint for userId + pollId.
+  // This ensures one user can only vote ONCE per poll.
+  @@unique([userId, pollId])
+  @@index([pollId])
+  @@index([userId])
+  @@index([optionId])
+}
+
+// --- NextAuth.js Models ---
+// These are required by NextAuth.js to store sessions and link accounts
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

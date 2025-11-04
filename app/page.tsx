@@ -1,66 +1,120 @@
-import React from 'react';
-// Changed to relative path
+// This is a Server Component. It can fetch data directly.
+import Link from 'next/link'; // Import the Link component for navigation
+import { Suspense } from 'react'; // Import Suspense for streaming
+
+// --- Use relative paths from 'app' directory ---
+// './' means in the same folder (app)
+// '../' means up one level (root)
 import { AuthInfo } from './components/AuthComponents';
-// Changed to relative path
-import { auth } from '../auth'; // Import the auth function
+import { auth } from '../auth'; // This is in the root, so '../'
+import { getPolls } from '../lib/data-access'; // This is in 'lib', so '../lib/'
+import { PollList } from './components/PollList';
+// ---
 
-// This is the main component for your homepage.
-export default async function HomePage() {
-  // We can 'await' the session directly in a Server Component!
-  const session = await auth();
-
+/**
+ * A simple loading component to be shown while the polls are streaming in.
+ */
+function PollsLoadingSkeleton() {
   return (
-    // We'll use Tailwind classes for all our styling.
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gray-900 text-white">
-      {/* Header Section */}
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-700 bg-gray-800/30 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto  lg:rounded-xl lg:border lg:border-gray-700 lg:bg-gray-800 lg:p-4">
-          My Awesome Poll App
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-black via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          {/* This component will show Login or Logout + User Info */}
-          <AuthInfo />
+    <div className="space-y-6">
+      {/* Create a few placeholder "skeleton" cards */}
+      {[...Array(3)].map((_, i) => (
+        <div
+          key={i}
+          className="animate-pulse rounded-lg bg-gray-800/50 p-6 shadow-xl ring-1 ring-white/10"
+        >
+          <div className="h-6 w-3/4 rounded bg-gray-700"></div>
+          <div className="mt-4 space-y-3">
+            <div className="h-8 rounded bg-gray-700"></div>
+            <div className="h-8 rounded bg-gray-700"></div>
+            <div className="h-8 rounded bg-gray-700"></div>
+          </div>
         </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="relative flex flex-col items-center text-center">
-        <h1 className="text-5xl font-bold">
-          Welcome to the Polling Platform
-        </h1>
-        {/* Show a welcome message if the user is logged in */}
-        {session?.user?.name && (
-          <p className="mt-4 text-2xl text-gray-300">
-            Hello, {session.user.name.split(' ')[0]}!
-          </p>
-        )}
-      </div>
-
-      {/* Footer / Placeholder */}
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-3 lg:text-left">
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-700 hover:bg-gray-800/30">
-          <h2 className="mb-3 text-2xl font-semibold">Vote</h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Browse active polls and cast your vote.
-          </p>
-        </div>
-
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-700 hover:bg-gray-800/30">
-          <h2 className="mb-3 text-2xl font-semibold">Admin Panel</h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Create and manage your own polls (coming soon!).
-          </p>
-        </div>
-
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-700 hover:bg-gray-800/30">
-          <h2 className="mb-3 text-2xl font-semibold">Results</h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            See the results of polls you have voted on.
-          </p>
-        </div>
-      </div>
-    </main>
+      ))}
+    </div>
   );
 }
 
+/**
+ * This is an async Server Component that fetches the poll data
+ * and renders the PollList.
+ * We pass in the userId so we can check which poll they voted on.
+ */
+async function LatestPolls({ userId }: { userId: string | undefined }) {
+  // This is a Server Component, so we can fetch data directly!
+  const polls = await getPolls(userId);
+
+  if (polls.length === 0) {
+    return (
+      <p className="text-center text-gray-400">
+        No polls have been created yet.
+      </p>
+    );
+  }
+
+  return <PollList polls={polls} />;
+}
+
+/**
+ * The main component for the homepage (/)
+ */
+export default async function Home() {
+  // We can 'await' the session directly in a Server Component
+  const session = await auth();
+
+  return (
+    <main className="mx-auto max-w-2xl p-6">
+      <header className="mb-12 text-center">
+        {/* This component will show Login/Logout buttons or user info */}
+        <AuthInfo session={session} />
+
+        <h1 className="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          Real-time Polls
+        </h1>
+        <p className="mt-4 text-lg text-gray-300">
+          Built with Next.js, Server Actions, and Prisma
+        </p>
+
+        {/* Show the "Create Poll" link ONLY if the user is logged in */}
+        {session?.user && (
+          <div className="mt-6">
+            <Link
+              href="/admin"
+              className="rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Create a New Poll
+            </Link>
+          </div>
+        )}
+      </header>
+
+      {/* --- MODIFIED SECTION --- */}
+      {/* Check if the user is logged in before showing the polls */}
+      {session?.user ? (
+        // If LOGGED IN, show the polls section
+        <section>
+          <h2 className="mb-6 text-center text-2xl font-semibold text-white">
+            Latest Polls
+          </h2>
+
+          {/*
+            Use <Suspense> to stream the poll data.
+            The page will load instantly with the <PollsLoadingSkeleton>.
+          */}
+          <Suspense fallback={<PollsLoadingSkeleton />}>
+            <LatestPolls userId={session.user.id} />
+          </Suspense>
+        </section>
+      ) : (
+        // If LOGGED OUT, show a prompt to log in
+        <section className="text-center">
+          <p className="rounded-lg bg-gray-800/50 px-6 py-8 text-lg text-gray-400 shadow-xl ring-1 ring-white/10">
+            Please log in to view and vote on polls.
+          </p>
+        </section>
+      )}
+      {/* --- END MODIFIED SECTION --- */}
+    </main>
+  );
+}
 

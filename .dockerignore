@@ -1,0 +1,23 @@
+# Do not copy local environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Do not copy node_modules (this will be installed inside the container)
+node_modules
+
+# Do not copy Next.js build output (this will be generated inside the container)
+.next
+
+# Do not copy Docker files (ironically)
+Dockerfile
+.dockerignore
+
+# Git files
+.git
+.gitignore
+
+# VS Code files
+.vscode
