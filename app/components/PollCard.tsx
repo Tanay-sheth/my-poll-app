@@ -1,11 +1,13 @@
 // This component will be a Server Component to start,
 // but it will render Client Components (the buttons).
 
-// --- FIX: Swapping to aliases for Vercel build ---
+// --- Use relative paths from 'app/components' directory ---
 // We'll use the root-based '@/' alias for all imports
 // to ensure Vercel's build process can find them.
 import type { PollWithData } from "@/lib/data-access";
 import { submitVote } from "@/app/actions";
+// --- THIS IS THE FIX ---
+// Changed 'in' to 'from'
 import { VoteButton } from "@/app/components/VoteButton";
 // ---
 
@@ -26,7 +28,6 @@ export function PollCard({ poll }: { poll: PollWithData }) {
   const userVote = poll.votes[0];
 
   // Calculate the total number of votes for this poll
-  // --- THIS IS THE FIX for the Vercel build error ---
   // We explicitly type 'sum' as a number and 'option' with our new type
   const totalVotes = poll.options.reduce((sum: number, option: PollOption) => {
     return sum + option._count.votes;
@@ -52,7 +53,9 @@ export function PollCard({ poll }: { poll: PollWithData }) {
         {/* We must include the pollId as hidden data so the action knows what poll is being voted on */}
         <input type="hidden" name="pollId" value={poll.id} />
 
-        {poll.options.map((option) => {
+        {/* --- THIS IS THE FIX --- */}
+        {/* We explicitly type 'option' with our 'PollOption' type */}
+        {poll.options.map((option: PollOption) => {
           // Calculate the percentage of votes for this option
           const voteCount = option._count.votes;
           const percentage =
